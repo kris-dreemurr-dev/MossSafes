@@ -28,14 +28,13 @@ public class SafeManager {
         this.plugin = plugin;
         this.configFile = new File(plugin.getDataFolder(), "safes.yml");
         loadData();
-        startActionBarTask(); // Запуск таймера обновления Action Bar
+        startActionBarTask();
     }
 
     private void startActionBarTask() {
         new BukkitRunnable() {
             @Override
             public void run() {
-                // 1. Подсказка для тех, кто создает сейф
                 for (UUID uuid : pendingCreation.keySet()) {
                     Player player = Bukkit.getPlayer(uuid);
                     if (player != null && player.isOnline()) {
@@ -44,7 +43,6 @@ public class SafeManager {
                     }
                 }
 
-                // 2. Подсказка для тех, кто пытается авторизоваться
                 for (UUID uuid : pendingAuth.keySet()) {
                     Player player = Bukkit.getPlayer(uuid);
                     if (player != null && player.isOnline()) {
@@ -53,7 +51,7 @@ public class SafeManager {
                     }
                 }
             }
-        }.runTaskTimer(plugin, 0L, 20L); // Выполнять каждые 20 тиков (1 секунда)
+        }.runTaskTimer(plugin, 0L, 20L);
     }
 
     public void loadData() {

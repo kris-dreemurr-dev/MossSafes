@@ -71,7 +71,6 @@ public class BlockListener implements Listener {
 
         Location loc = block.getLocation();
 
-        // Отмена регистрации незавершенного сейфа
         if (plugin.getSafeManager().getPendingCreation().containsValue(loc)) {
             Player player = event.getPlayer();
             plugin.getSafeManager().getPendingCreation().values().remove(loc);
@@ -82,14 +81,12 @@ public class BlockListener implements Listener {
             return;
         }
 
-        // Зарегистрированный сейф
         if (plugin.getSafeManager().isSafe(loc)) {
             Player player = event.getPlayer();
             String locKey = plugin.getSafeManager().locationToString(loc);
 
             List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
 
-            // Ломать может любой авторизованный игрок или Оператор (OP)
             if (!authorized.contains(player.getUniqueId().toString()) && !player.isOp()) {
                 player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете сломать этот сейф, так как не авторизованы в нем!");
 

@@ -8,6 +8,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 
@@ -22,16 +23,24 @@ public class ChatListener implements Listener {
         this.plugin = plugin;
     }
 
-    @EventHandler
+    // Приоритет HIGHEST гарантирует, что мы отменяем событие до отправки плагинами чата (ZoChat)
+    @EventHandler(priority = EventPriority.HIGHEST, ignoreCancelled = false)
     public void onPlayerChat(AsyncPlayerChatEvent event) {
         Player player = event.getPlayer();
         UUID uuid = player.getUniqueId();
 
-        // 1. Ввод пароля для авторизации
-        if (plugin.getSafeManager().getPendingAuth().containsKey(uuid)) {
-            event.setCancelled(true);
-            String inputPassword = event.getMessage().trim();
+        boolean isPendingAuth = plugin.getSafeManager().getPendingAuth().containsKey(uuid);
+        boolean isPendingCreation = plugin.getSafeManager().getPendingCreation().containsKey(uuid);
 
+        // Если игрок в процессе ввода пароля или создания — полностью блокируем сообщение для ВСЕХ
+        if (isPendingAuth || isPendingCreation) {
+            event.setCancelled(true);
+            event.getRecipients().clear(); // Гарантированная очистка получателей для чат-плагинов
+        }
+
+        // 1. Ввод пароля для авторизации
+        if (isPendingAuth) {
+            String inputPassword = event.getMessage().trim();
             Location loc = plugin.getSafeManager().getPendingAuth().remove(uuid);
 
             String locKey = plugin.getSafeManager().locationToString(loc);
@@ -47,7 +56,10 @@ public class ChatListener implements Listener {
                 }
 
                 player.sendMessage(ChatColor.GREEN + "[MossSafes] Пароль от сейфа '" + safeName + "' верный! Доступ разрешен.");
-                player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+
+                if (loc.getWorld() != null) {
+                    loc.getWorld().playSound(loc, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+                }
 
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     Block block = loc.getBlock();
@@ -63,16 +75,18 @@ public class ChatListener implements Listener {
 
                 plugin.getServer().getScheduler().runTask(plugin, () -> {
                     player.damage(2.0);
-                    player.playSound(player.getLocation(), Sound.ENTITY_ALLAY_HURT, 1.0f, 1.0f);
-                    player.playSound(player.getLocation(), Sound.ENTITY_BAT_DEATH, 1.0f, 1.0f);
+                    if (player.getWorld() != null) {
+                        Location pLoc = player.getLocation();
+                        player.getWorld().playSound(pLoc, Sound.ENTITY_ALLAY_HURT, 1.0f, 1.0f);
+                        player.getWorld().playSound(pLoc, Sound.ENTITY_BAT_DEATH, 1.0f, 1.0f);
+                    }
                 });
             }
             return;
         }
 
         // 2. Создание нового сейфа
-        if (plugin.getSafeManager().getPendingCreation().containsKey(uuid)) {
-            event.setCancelled(true);
+        if (isPendingCreation) {
             String[] args = event.getMessage().split(" ");
 
             if (args.length < 2) {
@@ -99,11 +113,11 @@ public class ChatListener implements Listener {
             plugin.getSafeManager().saveData();
 
             player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф '" + safeName + "' успешно создан!");
-
-            // Сообщение со списком команд управления
             player.sendMessage(ChatColor.DARK_GREEN + "Команды для управления " + ChatColor.GREEN + "/mosafes");
 
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            if (loc.getWorld() != null) {
+                loc.getWorld().playSound(loc, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
+            }
         }
     }
 }

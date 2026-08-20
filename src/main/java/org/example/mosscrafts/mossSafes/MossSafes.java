@@ -21,7 +21,7 @@ public final class MossSafes extends JavaPlugin {
         // Регистрация событий
         getServer().getPluginManager().registerEvents(new BlockListener(this), this);
         getServer().getPluginManager().registerEvents(new InteractListener(this), this);
-        getServer().getPluginManager().registerEvents(new ChatListener(this), this);
+        //getServer().getPluginManager().registerEvents(new ChatListener(this), this);
 
         // Регистрация команд
         SafeCommand safeCommand = new SafeCommand(this);

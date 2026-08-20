@@ -26,7 +26,12 @@ public class SafeManager {
 
     public void loadData() {
         if (!configFile.exists()) {
-            plugin.saveResource("safes.yml", false);
+            try {
+                configFile.getParentFile().mkdirs();
+                configFile.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         config = YamlConfiguration.loadConfiguration(configFile);
     }
@@ -51,8 +56,11 @@ public class SafeManager {
         return pendingAuth;
     }
 
-    public String locationToString(Location loc) {
-        return loc.getWorld().getName() + "_" + loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ();
+    // Проверка: является ли блок по этой локации сейфом
+    public boolean isSafe(Location loc) {
+        if (loc == null) return false;
+        String locKey = locationToString(loc);
+        return config.contains("safes." + locKey);
     }
 
     public boolean isSafeNameExists(String name) {
@@ -78,16 +86,21 @@ public class SafeManager {
     }
 
     public List<String> getAuthorizedSafes(UUID playerUUID) {
-        List<String> result = new ArrayList<>();
-        if (!config.contains("safes")) return result;
+        List<String> list = new ArrayList<>();
+        if (!config.contains("safes")) return list;
 
         for (String key : config.getConfigurationSection("safes").getKeys(false)) {
-            List<String> authList = config.getStringList("safes." + key + ".authorized");
-            if (authList.contains(playerUUID.toString())) {
+            List<String> auth = config.getStringList("safes." + key + ".authorized");
+            if (auth.contains(playerUUID.toString())) {
                 String safeName = config.getString("safes." + key + ".name");
-                if (safeName != null) result.add(safeName);
+                if (safeName != null) list.add(safeName);
             }
         }
-        return result;
+        return list;
+    }
+
+    public String locationToString(Location loc) {
+        if (loc == null || loc.getWorld() == null) return "";
+        return loc.getWorld().getName() + "_" + loc.getBlockX() + "_" + loc.getBlockY() + "_" + loc.getBlockZ();
     }
 }

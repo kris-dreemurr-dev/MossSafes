@@ -2,18 +2,17 @@ package org.example.mosscrafts.mossSafes.listeners;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.block.Block;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.event.block.Action;
 import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.inventory.InventoryHolder;
 
 import java.util.List;
-import java.util.UUID;
 
 public class InteractListener implements Listener {
 
@@ -24,60 +23,35 @@ public class InteractListener implements Listener {
     }
 
     @EventHandler
-    public void onInteract(PlayerInteractEvent event) {
+    public void onPlayerInteract(PlayerInteractEvent event) {
+        if (event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
+
         Block block = event.getClickedBlock();
-        if (block == null) return;
+        if (block == null || (block.getType() != Material.CHEST && block.getType() != Material.TRAPPED_CHEST)) return;
 
-        Block mainBlock = getMainChestBlock(block);
-        if (mainBlock == null) return;
+        Location loc = block.getLocation();
 
-        String locKey = plugin.getSafeManager().locationToString(mainBlock.getLocation());
-        if (!plugin.getSafeManager().getConfig().contains("safes." + locKey)) return;
+        if (plugin.getSafeManager().isSafe(loc)) {
+            Player player = event.getPlayer();
+            String locKey = plugin.getSafeManager().locationToString(loc);
+            List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
 
-        Player player = event.getPlayer();
-        UUID uuid = player.getUniqueId();
+            // Если игрок не авторизован
+            if (!authorized.contains(player.getUniqueId().toString())) {
+                event.setCancelled(true);
 
-        List<String> authList = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
+                // Запоминаем, что игрок пытается открыть этот сейф
+                plugin.getSafeManager().getPendingAuth().put(player.getUniqueId(), loc);
 
-        if (!authList.contains(uuid.toString())) {
-            event.setCancelled(true);
-            plugin.getSafeManager().getPendingAuth().put(uuid, mainBlock.getLocation());
+                String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
+                player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Сейф '" + safeName + "' заблокирован.");
+                player.sendMessage(ChatColor.YELLOW + "Введите пароль командой: " + ChatColor.GREEN + "/mosafes auth <пароль>");
 
-            String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
-
-            // Звук закрытия калитки (нет доступа)
-            player.playSound(player.getLocation(), Sound.BLOCK_FENCE_GATE_CLOSE, 1.0f, 1.0f);
-
-            player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.RED +
-                    "Сейф '" + ChatColor.YELLOW + safeName + ChatColor.RED + "' заблокирован. Введите пароль в чат:");
-            return;
-        }
-
-        if (mainBlock.getState() instanceof Chest) {
-            Chest chest = (Chest) mainBlock.getState();
-            String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
-            chest.setCustomName(ChatColor.GOLD + "Защищенный сундук: " + ChatColor.GREEN + safeName);
-            chest.update();
-
-            // Звук подбора сферы опыта при успешном открытии
-            player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
-        }
-    }
-
-    private Block getMainChestBlock(Block block) {
-        if (!(block.getState() instanceof Chest)) return null;
-
-        Chest chest = (Chest) block.getState();
-        InventoryHolder holder = chest.getInventory().getHolder();
-
-        if (holder instanceof DoubleChest) {
-            DoubleChest doubleChest = (DoubleChest) holder;
-            Chest leftChest = (Chest) doubleChest.getLeftSide();
-            if (leftChest != null) {
-                return leftChest.getBlock();
+                // Звук закрытой двери/замка воспроизводится в мире для всех поблизости
+                if (loc.getWorld() != null) {
+                    loc.getWorld().playSound(loc, Sound.BLOCK_CHEST_LOCKED, 1.0f, 1.0f);
+                }
             }
         }
-
-        return block;
     }
 }

@@ -2,25 +2,24 @@ package org.example.mosscrafts.mossSafes.listeners;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
 import org.bukkit.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.Chest;
-import org.bukkit.block.DoubleChest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
-import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
+import java.util.Collections;
+
 public class BlockListener implements Listener {
 
     private final MossSafes plugin;
-    private final BlockFace[] CARDINAL_FACES = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
 
     public BlockListener(MossSafes plugin) {
         this.plugin = plugin;
@@ -28,42 +27,33 @@ public class BlockListener implements Listener {
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        Block placedBlock = event.getBlock();
-        ItemStack item = event.getItemInHand();
-
-        if (placedBlock.getType() != Material.CHEST) return;
-
         Player player = event.getPlayer();
+        ItemStack item = event.getItemInHand();
+        Block placedBlock = event.getBlockPlaced();
 
-        // 1. ЗАЩИТА: Запрещаем ставить сундук рядом с блоком, который ждет ввода пароля
-        for (BlockFace face : CARDINAL_FACES) {
-            Block relative = placedBlock.getRelative(face);
-            if (relative.getType() == Material.CHEST) {
-                if (plugin.getSafeManager().getPendingCreation().containsValue(relative.getLocation())) {
+        if (item.hasItemMeta()) {
+            ItemMeta meta = item.getItemMeta();
+            if (meta != null && meta.getPersistentDataContainer().has(plugin.getSafeKey(), PersistentDataType.STRING)) {
+
+                if (hasAdjacentPendingSafe(placedBlock)) {
+                    player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя ставить сейф рядом с другим незарегистрированным сейфом!");
                     event.setCancelled(true);
-                    player.sendMessage(ChatColor.RED + "[MossSafes] Сначала завершите создание первого сейфа (введите название и пароль)!");
                     return;
                 }
+
+                Location loc = placedBlock.getLocation();
+                plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), loc);
+
+                player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Вы поставили сейф!");
+                player.sendMessage(ChatColor.YELLOW + "Зарегистрируйте его командой: " + ChatColor.GREEN + "/mosafes create <название> <пароль>");
+                return;
             }
         }
 
-        // 2. Если поставили сундук рядом с УЖЕ полностью зарегистрированным сейфом
-        if (isAdjacentToFullyRegisteredSafe(placedBlock)) {
-            player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф успешно расширен!");
-            return;
-        }
-
-        // 3. Создание нового сейфа из предмета
-        if (item.hasItemMeta()) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null) {
-                String tagValue = meta.getPersistentDataContainer().get(plugin.getSafeKey(), PersistentDataType.STRING);
-
-                if ("safe".equals(tagValue)) {
-                    plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), placedBlock.getLocation());
-                    player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW +
-                            "Вы поставили сейф! Введите в чат название и пароль через пробел (Пример: my_safe 1234):");
-                }
+        if (placedBlock.getType() == Material.CHEST || placedBlock.getType() == Material.TRAPPED_CHEST) {
+            if (hasAdjacentPendingSafe(placedBlock)) {
+                player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя объединять сундук с сейфом, пока не завершена его регистрация!");
+                event.setCancelled(true);
             }
         }
     }
@@ -71,60 +61,63 @@ public class BlockListener implements Listener {
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        if (!(block.getState() instanceof Chest)) return;
-
-        Chest chest = (Chest) block.getState();
-        InventoryHolder holder = chest.getInventory().getHolder();
-
-        String locKeyToRemove = null;
-
-        if (holder instanceof DoubleChest) {
-            DoubleChest doubleChest = (DoubleChest) holder;
-            Chest left = (Chest) doubleChest.getLeftSide();
-            Chest right = (Chest) doubleChest.getRightSide();
-
-            if (left != null && right != null) {
-                String leftKey = plugin.getSafeManager().locationToString(left.getLocation());
-                String rightKey = plugin.getSafeManager().locationToString(right.getLocation());
-
-                if (block.getLocation().equals(left.getLocation()) && plugin.getSafeManager().getConfig().contains("safes." + leftKey)) {
-                    copySafeData("safes." + leftKey, "safes." + rightKey);
-                    locKeyToRemove = leftKey;
-                } else if (block.getLocation().equals(right.getLocation())) {
-                    locKeyToRemove = rightKey;
-                }
-            }
-        } else {
-            String locKey = plugin.getSafeManager().locationToString(block.getLocation());
-            if (plugin.getSafeManager().getConfig().contains("safes." + locKey)) {
-                locKeyToRemove = locKey;
-            }
+        if (block.getType() != Material.CHEST && block.getType() != Material.TRAPPED_CHEST) {
+            return;
         }
 
-        if (locKeyToRemove != null) {
-            plugin.getSafeManager().getConfig().set("safes." + locKeyToRemove, null);
+        Location loc = block.getLocation();
+
+        if (plugin.getSafeManager().getPendingCreation().containsValue(loc)) {
+            Player player = event.getPlayer();
+            plugin.getSafeManager().getPendingCreation().values().remove(loc);
+
+            event.setDropItems(false);
+            dropCustomSafeItem(loc);
+            player.sendMessage(ChatColor.YELLOW + "[MossSafes] Регистрация сейфа отменена.");
+            return;
+        }
+
+        if (plugin.getSafeManager().isSafe(loc)) {
+            Player player = event.getPlayer();
+            String locKey = plugin.getSafeManager().locationToString(loc);
+
+            String ownerUUID = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".owner");
+            if (ownerUUID != null && !player.getUniqueId().toString().equals(ownerUUID) && !player.isOp()) {
+                player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете сломать чужой сейф!");
+                event.setCancelled(true);
+                return;
+            }
+
+            event.setDropItems(false);
+            dropCustomSafeItem(loc);
+
+            plugin.getSafeManager().getConfig().set("safes." + locKey, null);
             plugin.getSafeManager().saveData();
-            event.getPlayer().sendMessage(ChatColor.YELLOW + "[MossSafes] Данные сейфа обновлены/удалены.");
+
+            player.sendMessage(ChatColor.YELLOW + "[MossSafes] Сейф был успешно демонтирован.");
         }
     }
 
-    private boolean isAdjacentToFullyRegisteredSafe(Block placedBlock) {
-        for (BlockFace face : CARDINAL_FACES) {
-            Block relative = placedBlock.getRelative(face);
-            if (relative.getType() == Material.CHEST) {
-                String locKey = plugin.getSafeManager().locationToString(relative.getLocation());
-                if (plugin.getSafeManager().getConfig().contains("safes." + locKey + ".name")) {
-                    return true;
-                }
+    private boolean hasAdjacentPendingSafe(Block block) {
+        BlockFace[] faces = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
+        for (BlockFace face : faces) {
+            Block relative = block.getRelative(face);
+            if (plugin.getSafeManager().getPendingCreation().containsValue(relative.getLocation())) {
+                return true;
             }
         }
         return false;
     }
 
-    private void copySafeData(String fromPath, String toPath) {
-        plugin.getSafeManager().getConfig().set(toPath + ".name", plugin.getSafeManager().getConfig().get(fromPath + ".name"));
-        plugin.getSafeManager().getConfig().set(toPath + ".password", plugin.getSafeManager().getConfig().get(fromPath + ".password"));
-        plugin.getSafeManager().getConfig().set(toPath + ".owner", plugin.getSafeManager().getConfig().get(fromPath + ".owner"));
-        plugin.getSafeManager().getConfig().set(toPath + ".authorized", plugin.getSafeManager().getConfig().get(fromPath + ".authorized"));
+    private void dropCustomSafeItem(Location loc) {
+        ItemStack safeItem = new ItemStack(Material.CHEST);
+        ItemMeta meta = safeItem.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(ChatColor.GOLD + "Защищенный Сейф");
+            meta.setLore(Collections.singletonList(ChatColor.GRAY + "Поставьте блок, чтобы задать пароль"));
+            meta.getPersistentDataContainer().set(plugin.getSafeKey(), PersistentDataType.STRING, "safe");
+            safeItem.setItemMeta(meta);
+        }
+        loc.getWorld().dropItemNaturally(loc.add(0.5, 0.5, 0.5), safeItem);
     }
 }

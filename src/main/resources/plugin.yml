@@ -1,0 +1,8 @@
+name: MossSafes
+version: 1.0
+main: org.example.mosscrafts.mossSafes.MossSafes
+api-version: '1.20'
+commands:
+  mosafes:
+    description: Основная команда управления сейфами
+    usage: /mosafes [remove|changepassword]

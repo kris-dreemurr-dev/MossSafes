@@ -2,7 +2,6 @@ package org.example.mosscrafts.mossSafes.listeners;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
 import org.bukkit.ChatColor;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -34,23 +33,34 @@ public class BlockListener implements Listener {
 
         if (placedBlock.getType() != Material.CHEST) return;
 
-        // 1. Проверяем, ставится ли блок вплотную к УЖЕ ЗАРЕГИСТРИРОВАННОМУ сейфу
-        if (isAdjacentToRegisteredSafe(placedBlock)) {
-            event.getPlayer().sendMessage(ChatColor.GREEN + "[MossSafes] Сейф успешно расширен!");
-            return; // Прерываем выполнение, чтобы НЕ запрашивать новый пароль
+        Player player = event.getPlayer();
+
+        // 1. ЗАЩИТА: Запрещаем ставить сундук рядом с блоком, который ждет ввода пароля
+        for (BlockFace face : CARDINAL_FACES) {
+            Block relative = placedBlock.getRelative(face);
+            if (relative.getType() == Material.CHEST) {
+                if (plugin.getSafeManager().getPendingCreation().containsValue(relative.getLocation())) {
+                    event.setCancelled(true);
+                    player.sendMessage(ChatColor.RED + "[MossSafes] Сначала завершите создание первого сейфа (введите название и пароль)!");
+                    return;
+                }
+            }
         }
 
-        // 2. Если рядом нет сейфа — обрабатываем как установку НОВОГО сейфа
+        // 2. Если поставили сундук рядом с УЖЕ полностью зарегистрированным сейфом
+        if (isAdjacentToFullyRegisteredSafe(placedBlock)) {
+            player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф успешно расширен!");
+            return;
+        }
+
+        // 3. Создание нового сейфа из предмета
         if (item.hasItemMeta()) {
             ItemMeta meta = item.getItemMeta();
             if (meta != null) {
                 String tagValue = meta.getPersistentDataContainer().get(plugin.getSafeKey(), PersistentDataType.STRING);
 
                 if ("safe".equals(tagValue)) {
-                    Player player = event.getPlayer();
-                    Location loc = placedBlock.getLocation();
-
-                    plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), loc);
+                    plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), placedBlock.getLocation());
                     player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW +
                             "Вы поставили сейф! Введите в чат название и пароль через пробел (Пример: my_safe 1234):");
                 }
@@ -77,7 +87,6 @@ public class BlockListener implements Listener {
                 String leftKey = plugin.getSafeManager().locationToString(left.getLocation());
                 String rightKey = plugin.getSafeManager().locationToString(right.getLocation());
 
-                // Если сломали левую (главную) половину — переносим данные на правую
                 if (block.getLocation().equals(left.getLocation()) && plugin.getSafeManager().getConfig().contains("safes." + leftKey)) {
                     copySafeData("safes." + leftKey, "safes." + rightKey);
                     locKeyToRemove = leftKey;
@@ -99,15 +108,12 @@ public class BlockListener implements Listener {
         }
     }
 
-    /**
-     * Проверяет соседей по сторонам света (N, S, E, W) на наличие сейфа в safes.yml
-     */
-    private boolean isAdjacentToRegisteredSafe(Block placedBlock) {
+    private boolean isAdjacentToFullyRegisteredSafe(Block placedBlock) {
         for (BlockFace face : CARDINAL_FACES) {
             Block relative = placedBlock.getRelative(face);
             if (relative.getType() == Material.CHEST) {
                 String locKey = plugin.getSafeManager().locationToString(relative.getLocation());
-                if (plugin.getSafeManager().getConfig().contains("safes." + locKey)) {
+                if (plugin.getSafeManager().getConfig().contains("safes." + locKey + ".name")) {
                     return true;
                 }
             }

@@ -1,6 +1,8 @@
 package org.example.mosscrafts.mossSafes.listeners;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -36,18 +38,16 @@ public class InteractListener implements Listener {
             String locKey = plugin.getSafeManager().locationToString(loc);
             List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
 
-            // Если игрок не авторизован
             if (!authorized.contains(player.getUniqueId().toString())) {
                 event.setCancelled(true);
 
-                // Запоминаем, что игрок пытается открыть этот сейф
                 plugin.getSafeManager().getPendingAuth().put(player.getUniqueId(), loc);
 
                 String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
                 player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Сейф '" + safeName + "' заблокирован.");
                 player.sendMessage(ChatColor.YELLOW + "Введите пароль командой: " + ChatColor.GREEN + "/mosafes auth <пароль>");
 
-                // Звук закрытой двери/замка воспроизводится в мире для всех поблизости
+
                 if (loc.getWorld() != null) {
                     loc.getWorld().playSound(loc, Sound.BLOCK_CHEST_LOCKED, 1.0f, 1.0f);
                 }

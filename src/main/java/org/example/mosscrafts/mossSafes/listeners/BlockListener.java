@@ -1,6 +1,8 @@
 package org.example.mosscrafts.mossSafes.listeners;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -16,6 +18,7 @@ import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.persistence.PersistentDataType;
 
 import java.util.Collections;
+import java.util.List;
 
 public class BlockListener implements Listener {
 
@@ -46,6 +49,7 @@ public class BlockListener implements Listener {
 
                 player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Вы поставили сейф!");
                 player.sendMessage(ChatColor.YELLOW + "Зарегистрируйте его командой: " + ChatColor.GREEN + "/mosafes create <название> <пароль>");
+
                 return;
             }
         }
@@ -67,6 +71,7 @@ public class BlockListener implements Listener {
 
         Location loc = block.getLocation();
 
+        // Отмена регистрации незавершенного сейфа
         if (plugin.getSafeManager().getPendingCreation().containsValue(loc)) {
             Player player = event.getPlayer();
             plugin.getSafeManager().getPendingCreation().values().remove(loc);
@@ -77,13 +82,20 @@ public class BlockListener implements Listener {
             return;
         }
 
+        // Зарегистрированный сейф
         if (plugin.getSafeManager().isSafe(loc)) {
             Player player = event.getPlayer();
             String locKey = plugin.getSafeManager().locationToString(loc);
 
-            String ownerUUID = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".owner");
-            if (ownerUUID != null && !player.getUniqueId().toString().equals(ownerUUID) && !player.isOp()) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете сломать чужой сейф!");
+            List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
+
+            // Ломать может любой авторизованный игрок или Оператор (OP)
+            if (!authorized.contains(player.getUniqueId().toString()) && !player.isOp()) {
+                player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете сломать этот сейф, так как не авторизованы в нем!");
+
+                player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
+                        new TextComponent(ChatColor.RED + "Сломать сейф могут только авторизованные игроки!"));
+
                 event.setCancelled(true);
                 return;
             }

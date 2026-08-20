@@ -1,9 +1,15 @@
 package org.example.mosscrafts.mossSafes.managers;
 
 import org.example.mosscrafts.mossSafes.MossSafes;
+import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.scheduler.BukkitRunnable;
 
 import java.io.File;
 import java.io.IOException;
@@ -22,6 +28,32 @@ public class SafeManager {
         this.plugin = plugin;
         this.configFile = new File(plugin.getDataFolder(), "safes.yml");
         loadData();
+        startActionBarTask(); // Запуск таймера обновления Action Bar
+    }
+
+    private void startActionBarTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                // 1. Подсказка для тех, кто создает сейф
+                for (UUID uuid : pendingCreation.keySet()) {
+                    Player player = Bukkit.getPlayer(uuid);
+                    if (player != null && player.isOnline()) {
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
+                                new TextComponent(ChatColor.GREEN + "Зарегистрируйте сейф"));
+                    }
+                }
+
+                // 2. Подсказка для тех, кто пытается авторизоваться
+                for (UUID uuid : pendingAuth.keySet()) {
+                    Player player = Bukkit.getPlayer(uuid);
+                    if (player != null && player.isOnline()) {
+                        player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
+                                new TextComponent(ChatColor.GREEN + "Введите пароль"));
+                    }
+                }
+            }
+        }.runTaskTimer(plugin, 0L, 20L); // Выполнять каждые 20 тиков (1 секунда)
     }
 
     public void loadData() {
@@ -56,7 +88,6 @@ public class SafeManager {
         return pendingAuth;
     }
 
-    // Проверка: является ли блок по этой локации сейфом
     public boolean isSafe(Location loc) {
         if (loc == null) return false;
         String locKey = locationToString(loc);

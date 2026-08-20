@@ -101,10 +101,7 @@ public class ChatListener implements Listener {
             player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф '" + safeName + "' успешно создан!");
 
             // Сообщение со списком команд управления
-            player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Команды для управления:");
-            player.sendMessage(ChatColor.GRAY + "• /safe changepassword <название> <новый_пароль> " + ChatColor.WHITE + "- Сменить пароль");
-            player.sendMessage(ChatColor.GRAY + "• /safe remove <название> " + ChatColor.WHITE + "- Удалить сейф");
-            player.sendMessage(ChatColor.GRAY + "• /safe chestlist " + ChatColor.WHITE + "- Список ваших сейфов");
+            player.sendMessage(ChatColor.DARK_GREEN + "Команды для управления " + ChatColor.GREEN + "/mosafes");
 
             player.playSound(player.getLocation(), Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
         }

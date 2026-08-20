@@ -33,13 +33,13 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
         Player player = (Player) sender;
 
         if (args.length == 0) {
-            player.sendMessage(ChatColor.GOLD + "=== MossSafes Помощь ===");
+            player.sendMessage(ChatColor.DARK_GREEN + "✎ MossSafes Помощь");
             if (player.isOp()) {
-                player.sendMessage(ChatColor.YELLOW + "/mosafes give <ник>" + ChatColor.WHITE + " - Выдать особый сейф (Только OP)");
+                player.sendMessage(ChatColor.GREEN + "/mosafes give <ник>" + ChatColor.WHITE + " - Выдать особый сейф (Только OP)");
             }
-            player.sendMessage(ChatColor.YELLOW + "/mosafes remove <название> <ник>" + ChatColor.WHITE + " - Деавторизовать игрока");
-            player.sendMessage(ChatColor.YELLOW + "/mosafes changepassword <название> <старый> <новый>" + ChatColor.WHITE + " - Сменить пароль");
-            player.sendMessage(ChatColor.YELLOW + "/mosafes chestlist <название>" + ChatColor.WHITE + " - Список авторизованных игроков");
+            player.sendMessage(ChatColor.GREEN + "/mosafes remove <название> <ник>" + ChatColor.WHITE + " - Деавторизовать игрока");
+            player.sendMessage(ChatColor.GREEN + "/mosafes changepassword <название> <старый пароль> <новый пароль>" + ChatColor.WHITE + " - Сменить пароль");
+            player.sendMessage(ChatColor.GREEN + "/mosafes chestlist <название>" + ChatColor.WHITE + " - Список авторизованных игроков в сейфе");
             return true;
         }
 

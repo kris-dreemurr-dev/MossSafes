@@ -1,5 +1,7 @@
 package org.example.mosscrafts.mossSafes.listeners;
 
+import org.bukkit.block.Chest;
+import org.bukkit.inventory.DoubleChestInventory;
 import org.example.mosscrafts.mossSafes.MossSafes;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -31,6 +33,22 @@ public class InteractListener implements Listener {
 
         Location loc = block.getLocation();
 
+        // Если прямо по этим координатам сейфа нет, проверяем: может это вторая половина двойного сейфа?
+        if (!plugin.getSafeManager().isSafe(loc) && block.getState() instanceof Chest) {
+            Chest chest = (Chest) block.getState();
+            if (chest.getInventory() instanceof DoubleChestInventory) {
+                DoubleChestInventory dci = (DoubleChestInventory) chest.getInventory();
+                Chest left = (Chest) dci.getHolder().getLeftSide();
+                Chest right = (Chest) dci.getHolder().getRightSide();
+
+                if (left != null && plugin.getSafeManager().isSafe(left.getLocation())) {
+                    loc = left.getLocation();
+                } else if (right != null && plugin.getSafeManager().isSafe(right.getLocation())) {
+                    loc = right.getLocation();
+                }
+            }
+        }
+
         if (plugin.getSafeManager().isSafe(loc)) {
             Player player = event.getPlayer();
             String locKey = plugin.getSafeManager().locationToString(loc);
@@ -44,7 +62,6 @@ public class InteractListener implements Listener {
                 String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
                 player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Сейф '" + safeName + "' заблокирован.");
                 player.sendMessage(ChatColor.YELLOW + "Введите пароль командой: " + ChatColor.GREEN + "/mosafes auth <пароль>");
-
 
                 if (loc.getWorld() != null) {
                     loc.getWorld().playSound(loc, Sound.BLOCK_CHEST_LOCKED, 1.0f, 1.0f);

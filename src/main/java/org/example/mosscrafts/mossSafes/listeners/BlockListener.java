@@ -34,30 +34,44 @@ public class BlockListener implements Listener {
         ItemStack item = event.getItemInHand();
         Block placedBlock = event.getBlockPlaced();
 
-        if (item.hasItemMeta()) {
-            ItemMeta meta = item.getItemMeta();
-            if (meta != null && meta.getPersistentDataContainer().has(plugin.getSafeKey(), PersistentDataType.STRING)) {
+        boolean isSafeItem = item.hasItemMeta() &&
+                item.getItemMeta().getPersistentDataContainer().has(plugin.getSafeKey(), PersistentDataType.STRING);
 
-                if (hasAdjacentPendingSafe(placedBlock)) {
-                    player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя ставить сейф рядом с другим незарегистрированным сейфом!");
+        if (placedBlock.getType() == Material.CHEST || placedBlock.getType() == Material.TRAPPED_CHEST) {
+
+            // Запрет на объединение, если соседний сейф еще в процессе регистрации (pending)
+            if (hasAdjacentPendingSafe(placedBlock)) {
+                player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя ставить сундук рядом с незарегистрированным сейфом!");
+                event.setCancelled(true);
+                return;
+            }
+
+            // Проверяем, есть ли рядом УЖЕ зарегистрированный сейф
+            Location adjacentSafeLoc = getAdjacentRegisteredSafeLocation(placedBlock);
+
+            if (adjacentSafeLoc != null) {
+                // Проверяем, авторизован ли игрок в существующем сейфе
+                String locKey = plugin.getSafeManager().locationToString(adjacentSafeLoc);
+                List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
+
+                if (!authorized.contains(player.getUniqueId().toString()) && !player.isOp()) {
+                    player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете расширить чужой сейф!");
                     event.setCancelled(true);
                     return;
                 }
 
+                // Успешное объединение! Новая половинка автоматически берет свойства существующего сейфа
+                player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф успешно расширен до двойного!");
+                return; // Не добавляем в pendingCreation!
+            }
+
+            // Если ставим одиночный предметов-сейф в пустое место -> просим зарегистрировать
+            if (isSafeItem) {
                 Location loc = placedBlock.getLocation();
                 plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), loc);
 
                 player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Вы поставили сейф!");
                 player.sendMessage(ChatColor.YELLOW + "Зарегистрируйте его командой: " + ChatColor.GREEN + "/mosafes create <название> <пароль>");
-
-                return;
-            }
-        }
-
-        if (placedBlock.getType() == Material.CHEST || placedBlock.getType() == Material.TRAPPED_CHEST) {
-            if (hasAdjacentPendingSafe(placedBlock)) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя объединять сундук с сейфом, пока не завершена его регистрация!");
-                event.setCancelled(true);
             }
         }
     }
@@ -71,6 +85,7 @@ public class BlockListener implements Listener {
 
         Location loc = block.getLocation();
 
+        // Отмена регистрации незавершенного сейфа
         if (plugin.getSafeManager().getPendingCreation().containsValue(loc)) {
             Player player = event.getPlayer();
             plugin.getSafeManager().getPendingCreation().values().remove(loc);
@@ -81,6 +96,7 @@ public class BlockListener implements Listener {
             return;
         }
 
+        // Зарегистрированный сейф
         if (plugin.getSafeManager().isSafe(loc)) {
             Player player = event.getPlayer();
             String locKey = plugin.getSafeManager().locationToString(loc);
@@ -116,6 +132,17 @@ public class BlockListener implements Listener {
             }
         }
         return false;
+    }
+
+    private Location getAdjacentRegisteredSafeLocation(Block block) {
+        BlockFace[] faces = {BlockFace.NORTH, BlockFace.EAST, BlockFace.SOUTH, BlockFace.WEST};
+        for (BlockFace face : faces) {
+            Block relative = block.getRelative(face);
+            if (plugin.getSafeManager().isSafe(relative.getLocation())) {
+                return relative.getLocation();
+            }
+        }
+        return null;
     }
 
     private void dropCustomSafeItem(Location loc) {

@@ -21,6 +21,12 @@ import java.util.*;
 
 public class SafeCommand implements CommandExecutor, TabCompleter {
 
+    private static String withPrefix(String message) {
+        String prefix = ChatColor.translateAlternateColorCodes('&',
+                "&x&C&6&E&9&C&1&lM&x&B&C&D&F&B&5&lᴏ&x&B&1&D&4&A&9&lꜱ&x&A&7&C&A&9&C&lꜱ&x&9&C&C&0&9&0&l-&x&9&2&B&5&8&4&lS&x&8&7&A&B&7&8&lᴀ&x&7&D&A&1&6&B&lғ&x&7&2&9&6&5&F&lᴇ&x&6&8&8&C&5&3&ls &8» &r");
+        return prefix + message;
+    }
+
     private final MossSafes plugin;
 
     public SafeCommand(MossSafes plugin) {
@@ -30,7 +36,7 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) {
-            sender.sendMessage("Команда доступна только игрокам!");
+            sender.sendMessage(withPrefix("Команда доступна только игрокам!"));
             return true;
         }
 
@@ -46,12 +52,12 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
 
         if (sub.equals("auth")) {
             if (!plugin.getSafeManager().getPendingAuth().containsKey(uuid)) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Вы не взаимодействовали с защищенным сейфом!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Вы не взаимодействовали с защищенным сейфом!"));
                 return true;
             }
 
             if (args.length < 2) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes auth <пароль>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes auth <пароль>"));
                 return true;
             }
 
@@ -69,7 +75,7 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
                     plugin.getSafeManager().saveData();
                 }
 
-                player.sendMessage(ChatColor.GREEN + "[MossSafes] Пароль от сейфа '" + safeName + "' верный!");
+                player.sendMessage(withPrefix(ChatColor.GREEN + "Пароль от сейфа '" + safeName + "' верный!"));
 
                 if (loc.getWorld() != null) {
                     loc.getWorld().playSound(loc, Sound.BLOCK_CHEST_OPEN, 1.0f, 1.0f);
@@ -82,7 +88,7 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
                     player.openInventory(chest.getInventory());
                 }
             } else {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Неверный пароль от сейфа '" + safeName + "'!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Неверный пароль от сейфа '" + safeName + "'!"));
 
                 player.damage(2.0);
                 if (player.getWorld() != null) {
@@ -96,12 +102,12 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
 
         if (sub.equals("create")) {
             if (!plugin.getSafeManager().getPendingCreation().containsKey(uuid)) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Сначала поставьте блок сейфа!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Сначала поставьте блок сейфа!"));
                 return true;
             }
 
             if (args.length < 3) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes create <название> <пароль>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes create <название> <пароль>"));
                 return true;
             }
 
@@ -109,7 +115,7 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
             String password = args[2];
 
             if (plugin.getSafeManager().isSafeNameExists(safeName)) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Сейф с названием '" + safeName + "' уже существует!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Сейф с названием '" + safeName + "' уже существует!"));
                 return true;
             }
 
@@ -122,7 +128,7 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
             plugin.getSafeManager().getConfig().set("safes." + locKey + ".authorized", List.of(uuid.toString()));
             plugin.getSafeManager().saveData();
 
-            player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф '" + safeName + "' успешно создан!");
+            player.sendMessage(withPrefix(ChatColor.GREEN + "Сейф '" + safeName + "' успешно создан!"));
 
             if (loc.getWorld() != null) {
                 loc.getWorld().playSound(loc, Sound.ENTITY_EXPERIENCE_ORB_PICKUP, 1.0f, 1.0f);
@@ -132,16 +138,16 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
 
         if (sub.equalsIgnoreCase("give")) {
             if (!player.isOp()) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] У вас нет прав!");
+                player.sendMessage(withPrefix(ChatColor.RED + "У вас нет прав!"));
                 return true;
             }
             if (args.length < 2) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes give <ник>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes give <ник>"));
                 return true;
             }
             Player target = Bukkit.getPlayer(args[1]);
             if (target == null) {
-                player.sendMessage(ChatColor.RED + "Игрок не найден!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Игрок не найден!"));
                 return true;
             }
             ItemStack safeItem = new ItemStack(Material.CHEST);
@@ -153,25 +159,25 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
                 safeItem.setItemMeta(meta);
             }
             target.getInventory().addItem(safeItem);
-            player.sendMessage(ChatColor.GREEN + "Защищенный сейф выдан игроку " + target.getName());
+            player.sendMessage(withPrefix(ChatColor.GREEN + "Защищенный сейф выдан игроку " + target.getName()));
             return true;
         }
 
         if (sub.equalsIgnoreCase("remove")) {
             if (args.length < 3) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes remove <название> <ник>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes remove <название> <ник>"));
                 return true;
             }
             String safeName = args[1];
             String targetName = args[2];
             String locKey = plugin.getSafeManager().findSafeByName(safeName);
             if (locKey == null) {
-                player.sendMessage(ChatColor.RED + "Сейф не найден!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Сейф не найден!"));
                 return true;
             }
             List<String> authList = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
             if (!authList.contains(player.getUniqueId().toString())) {
-                player.sendMessage(ChatColor.RED + "У вас нет доступа к этому сейфу!");
+                player.sendMessage(withPrefix(ChatColor.RED + "У вас нет доступа к этому сейфу!"));
                 return true;
             }
             String targetUUID = null;
@@ -183,19 +189,19 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
                 }
             }
             if (targetUUID == null) {
-                player.sendMessage(ChatColor.RED + "Игрок не найден в списке авторизованных!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Игрок не найден в списке авторизованных!"));
                 return true;
             }
             authList.remove(targetUUID);
             plugin.getSafeManager().getConfig().set("safes." + locKey + ".authorized", authList);
             plugin.getSafeManager().saveData();
-            player.sendMessage(ChatColor.GREEN + "Игрок " + targetName + " деавторизован из сейфа '" + safeName + "'!");
+            player.sendMessage(withPrefix(ChatColor.GREEN + "Игрок " + targetName + " деавторизован из сейфа '" + safeName + "'!"));
             return true;
         }
 
         if (sub.equalsIgnoreCase("changepassword")) {
             if (args.length < 4) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes changepassword <название> <старый> <новый>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes changepassword <название> <старый> <новый>"));
                 return true;
             }
             String safeName = args[1];
@@ -203,40 +209,40 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
             String newPass = args[3];
             String locKey = plugin.getSafeManager().findSafeByName(safeName);
             if (locKey == null) {
-                player.sendMessage(ChatColor.RED + "Сейф не найден!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Сейф не найден!"));
                 return true;
             }
             String currentPass = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".password");
             if (!Objects.equals(currentPass, oldPass)) {
-                player.sendMessage(ChatColor.RED + "Старый пароль введен неверно!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Старый пароль введен неверно!"));
                 return true;
             }
             plugin.getSafeManager().getConfig().set("safes." + locKey + ".password", newPass);
             plugin.getSafeManager().saveData();
-            player.sendMessage(ChatColor.GREEN + "Пароль изменен!");
+            player.sendMessage(withPrefix(ChatColor.GREEN + "Пароль изменен!"));
             return true;
         }
 
         if (sub.equalsIgnoreCase("chestlist")) {
             if (args.length < 2) {
-                player.sendMessage(ChatColor.RED + "Использование: /mosafes chestlist <название>");
+                player.sendMessage(withPrefix(ChatColor.RED + "Использование: /mosafes chestlist <название>"));
                 return true;
             }
             String safeName = args[1];
             String locKey = plugin.getSafeManager().findSafeByName(safeName);
             if (locKey == null) {
-                player.sendMessage(ChatColor.RED + "Сейф не найден!");
+                player.sendMessage(withPrefix(ChatColor.RED + "Сейф не найден!"));
                 return true;
             }
             List<String> authList = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
             if (!authList.contains(player.getUniqueId().toString())) {
-                player.sendMessage(ChatColor.RED + "У вас нет доступа к этому сейфу!");
+                player.sendMessage(withPrefix(ChatColor.RED + "У вас нет доступа к этому сейфу!"));
                 return true;
             }
-            player.sendMessage(ChatColor.GOLD + "=== Авторизованные в сейфе '" + safeName + "' ===");
+            player.sendMessage(withPrefix(ChatColor.GOLD + "=== Авторизованные в сейфе '" + safeName + "' ==="));
             for (String uuidStr : authList) {
                 String pName = Bukkit.getOfflinePlayer(UUID.fromString(uuidStr)).getName();
-                player.sendMessage(ChatColor.YELLOW + "- " + (pName != null ? pName : uuidStr));
+                player.sendMessage(withPrefix(ChatColor.YELLOW + "- " + (pName != null ? pName : uuidStr)));
             }
             return true;
         }
@@ -246,15 +252,15 @@ public class SafeCommand implements CommandExecutor, TabCompleter {
     }
 
     private void sendHelp(Player player) {
-        player.sendMessage(ChatColor.DARK_GREEN + "✎ MossSafes Помощь");
+        player.sendMessage(withPrefix(ChatColor.DARK_GREEN + "✎ Помощь"));
         if (player.isOp()) {
-            player.sendMessage(ChatColor.GREEN + "/mosafes give <ник>" + ChatColor.WHITE + " - Выдать особый сейф (Только OP)");
+            player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes give <ник>" + ChatColor.WHITE + " - Выдать особый сейф (Только OP)"));
         }
-        player.sendMessage(ChatColor.GREEN + "/mosafes create <название> <пароль>" + ChatColor.WHITE + " - Создать сейф после установки");
-        player.sendMessage(ChatColor.GREEN + "/mosafes auth <пароль>" + ChatColor.WHITE + " - Ввести пароль от сейфа");
-        player.sendMessage(ChatColor.GREEN + "/mosafes remove <название> <ник>" + ChatColor.WHITE + " - Деавторизовать игрока");
-        player.sendMessage(ChatColor.GREEN + "/mosafes changepassword <название> <старый> <новый>" + ChatColor.WHITE + " - Сменить пароль");
-        player.sendMessage(ChatColor.GREEN + "/mosafes chestlist <название>" + ChatColor.WHITE + " - Список авторизованных игроков");
+        player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes create <название> <пароль>" + ChatColor.WHITE + " - Создать сейф после установки"));
+        player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes auth <пароль>" + ChatColor.WHITE + " - Ввести пароль от сейфа"));
+        player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes remove <название> <ник>" + ChatColor.WHITE + " - Деавторизовать игрока"));
+        player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes changepassword <название> <старый> <новый>" + ChatColor.WHITE + " - Сменить пароль"));
+        player.sendMessage(withPrefix(ChatColor.GREEN + "/mosafes chestlist <название>" + ChatColor.WHITE + " - Список авторизованных игроков"));
     }
 
     @Override

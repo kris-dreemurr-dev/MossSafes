@@ -41,7 +41,7 @@ public class BlockListener implements Listener {
 
             // Запрет на объединение, если соседний сейф еще в процессе регистрации (pending)
             if (hasAdjacentPendingSafe(placedBlock)) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Нельзя ставить сундук рядом с незарегистрированным сейфом!");
+                player.sendMessage(MossSafes.formatMessage(ChatColor.RED + "Нельзя ставить сундук рядом с незарегистрированным сейфом!"));
                 event.setCancelled(true);
                 return;
             }
@@ -55,13 +55,13 @@ public class BlockListener implements Listener {
                 List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
 
                 if (!authorized.contains(player.getUniqueId().toString()) && !player.isOp()) {
-                    player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете расширить чужой сейф!");
+                    player.sendMessage(MossSafes.formatMessage(ChatColor.RED + "Вы не можете расширить чужой сейф!"));
                     event.setCancelled(true);
                     return;
                 }
 
                 // Успешное объединение! Новая половинка автоматически берет свойства существующего сейфа
-                player.sendMessage(ChatColor.GREEN + "[MossSafes] Сейф успешно расширен до двойного!");
+                player.sendMessage(MossSafes.formatMessage(ChatColor.GREEN + "Сейф успешно расширен до двойного!"));
                 return; // Не добавляем в pendingCreation!
             }
 
@@ -70,8 +70,8 @@ public class BlockListener implements Listener {
                 Location loc = placedBlock.getLocation();
                 plugin.getSafeManager().getPendingCreation().put(player.getUniqueId(), loc);
 
-                player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Вы поставили сейф!");
-                player.sendMessage(ChatColor.YELLOW + "Зарегистрируйте его командой: " + ChatColor.GREEN + "/mosafes create <название> <пароль>");
+                player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Вы поставили сейф!"));
+                player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Зарегистрируйте его командой: " + ChatColor.GREEN + "/mosafes create <название> <пароль>"));
             }
         }
     }
@@ -92,7 +92,7 @@ public class BlockListener implements Listener {
 
             event.setDropItems(false);
             dropCustomSafeItem(loc);
-            player.sendMessage(ChatColor.YELLOW + "[MossSafes] Регистрация сейфа отменена.");
+            player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Регистрация сейфа отменена."));
             return;
         }
 
@@ -104,7 +104,7 @@ public class BlockListener implements Listener {
             List<String> authorized = plugin.getSafeManager().getConfig().getStringList("safes." + locKey + ".authorized");
 
             if (!authorized.contains(player.getUniqueId().toString()) && !player.isOp()) {
-                player.sendMessage(ChatColor.RED + "[MossSafes] Вы не можете сломать этот сейф, так как не авторизованы в нем!");
+                player.sendMessage(MossSafes.formatMessage(ChatColor.RED + "Вы не можете сломать этот сейф, так как не авторизованы в нем!"));
 
                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR,
                         new TextComponent(ChatColor.RED + "Сломать сейф могут только авторизованные игроки!"));
@@ -119,7 +119,7 @@ public class BlockListener implements Listener {
             plugin.getSafeManager().getConfig().set("safes." + locKey, null);
             plugin.getSafeManager().saveData();
 
-            player.sendMessage(ChatColor.YELLOW + "[MossSafes] Сейф был успешно демонтирован.");
+            player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Сейф был успешно демонтирован."));
         }
     }
 

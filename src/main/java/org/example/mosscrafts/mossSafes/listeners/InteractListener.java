@@ -60,8 +60,8 @@ public class InteractListener implements Listener {
                 plugin.getSafeManager().getPendingAuth().put(player.getUniqueId(), loc);
 
                 String safeName = plugin.getSafeManager().getConfig().getString("safes." + locKey + ".name", "Сейф");
-                player.sendMessage(ChatColor.GOLD + "[MossSafes] " + ChatColor.YELLOW + "Сейф '" + safeName + "' заблокирован.");
-                player.sendMessage(ChatColor.YELLOW + "Введите пароль командой: " + ChatColor.GREEN + "/mosafes auth <пароль>");
+                player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Сейф '" + safeName + "' заблокирован."));
+                player.sendMessage(MossSafes.formatMessage(ChatColor.YELLOW + "Введите пароль командой: " + ChatColor.GREEN + "/mosafes auth <пароль>"));
 
                 if (loc.getWorld() != null) {
                     loc.getWorld().playSound(loc, Sound.BLOCK_CHEST_LOCKED, 1.0f, 1.0f);
